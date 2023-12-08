@@ -106,7 +106,7 @@ public class Main {
 
         while (true) {
             Process shortest = null;
-            int shortestTime = Integer.MAX_VALUE;
+            int shortestTime = Integer.MAX_VALUE; //don't know why
 
             for (Process p : processes) {
                 if (p.arrivalTime <= currentTime && !p.executed && p.burstTime < shortestTime) {
@@ -143,7 +143,7 @@ public class Main {
         calculateAverages(srtfOrder, "Shortest Remaining Time First ");
     }
 
-    // Non-preemptive Priority Scheduling
+    // (3)
     public static void priorityScheduler(List<Process> processes, int contextSwitchingTime) {
         List<Process> priorityOrder = new ArrayList<>();
         List<Process> waitingQueue = new ArrayList<>();
@@ -174,13 +174,13 @@ public class Main {
         calculateAverages(priorityOrder, "Non-preemptive Priority Scheduling");
     }
 
-
+    // Calcu avg wait time and avg turnaround time
     public static void calculateAverages(List<Process> order, String scheduler) {
         int totalWaitingTime = 0;
         int totalTurnaroundTime = 0;
 
         System.out.println("\n" + scheduler + " Execution Order:");
-        for (Process p : order) {  // Calcu avg wait time and avg turnaround time
+        for (Process p : order) {
             System.out.println("Process " + p.name + " (" + p.color + ")");
             totalWaitingTime += p.waitingTime;
             totalTurnaroundTime += p.turnaroundTime;
