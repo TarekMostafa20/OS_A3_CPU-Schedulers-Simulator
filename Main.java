@@ -67,7 +67,7 @@ public class Main {
 
         //sjfScheduler(new ArrayList<>(processes), contextSwitchingTime); DONE
         //srtfScheduler(new ArrayList<>(processes), contextSwitchingTime);DONE
-        // priorityScheduler(new ArrayList<>(processes), contextSwitchingTime);
+        //priorityScheduler(new ArrayList<>(processes), contextSwitchingTime);DONE
 
         scanner.close();
     }
@@ -191,27 +191,34 @@ public class Main {
         List<Process> priorityOrder = new ArrayList<>();
         List<Process> waitingQueue = new ArrayList<>();
         int currentTime = 0;
-
+        processes.sort(Comparator.comparingInt(p -> p.priority));
         while (!processes.isEmpty() || !waitingQueue.isEmpty()) {
-            for (Process p : processes) {
+            Iterator<Process> processIterator = processes.iterator();
+            while (processIterator.hasNext()) {
+                Process p = processIterator.next();
                 if (p.arrivalTime <= currentTime && !p.executed) {
                     waitingQueue.add(p);
+                    processIterator.remove();
                 }
             }
-
             if (!waitingQueue.isEmpty()) {
                 waitingQueue.sort(Comparator.comparingInt(p -> p.priority));
-                Process highestPriority = waitingQueue.remove(0);
-                highestPriority.startTime = currentTime;
-                highestPriority.finishTime = currentTime + highestPriority.burstTime;
-                highestPriority.turnaroundTime = highestPriority.finishTime - highestPriority.arrivalTime;
-                highestPriority.waitingTime = highestPriority.turnaroundTime - highestPriority.burstTime;
-                currentTime = highestPriority.finishTime + contextSwitchingTime;
-                highestPriority.executed = true;
-                priorityOrder.add(highestPriority);
-            } else {
+                Process shortest = waitingQueue.remove(0);
+                shortest.startTime = currentTime;
+                shortest.finishTime = currentTime + shortest.burstTime;
+                shortest.turnaroundTime = shortest.finishTime - shortest.arrivalTime;
+                shortest.waitingTime = shortest.turnaroundTime - shortest.burstTime;
+                currentTime = shortest.finishTime;
+                shortest.executed = true;
+                priorityOrder.add(shortest);
+            } else if (!processes.isEmpty()) {
                 currentTime++;
             }
+        }
+
+        System.out.println("\n" + "Shortest-Job First" + " Execution Order:");
+        for (Process p : priorityOrder) {
+            System.out.println("Process " + p.name + " (" + p.color + ")" + ":\t" + p.startTime + " ---- " + p.finishTime );
         }
 
         calculateAverages(priorityOrder, "Non-preemptive Priority Scheduling");
@@ -222,9 +229,9 @@ public class Main {
         int totalWaitingTime = 0;
         int totalTurnaroundTime = 0;
         int counter = 0;
-        //System.out.println("\n" + scheduler + " Execution Order:");
+        System.out.println("\n" + scheduler + " Execution Order:");
         for (Process p : order) {
-            //System.out.println("Process " + p.name + " (" + p.color + ")" + ":\t" + p.startTime + " ---- " + p.finishTime );
+            System.out.println("Process " + p.name + " (" + p.color + ")" + ":\t" + p.startTime + " ---- " + p.finishTime );
             if(!p.calculated){
                 counter++;
                 p.calculated = true;
