@@ -42,7 +42,7 @@ public class Main {
         List<Process> processes = new ArrayList<>();
 
         for (int i = 0; i < numProcesses; i++) {
-            System.out.println("Enter تفاصيل ي حبيبي تفاصيل for Process " + (i + 1) + ":");
+            System.out.println("Enter the details of Process " + (i + 1) + ":");
             System.out.print("Name: ");
             String name = scanner.next();
 
@@ -61,45 +61,46 @@ public class Main {
             processes.add(new Process(name, color, arrivalTime, burstTime, priority));
         }
 
-        sjfScheduler(new ArrayList<>(processes), contextSwitchingTime);
-        srtfScheduler(new ArrayList<>(processes), contextSwitchingTime);
-        priorityScheduler(new ArrayList<>(processes), contextSwitchingTime);
+        //sjfScheduler(new ArrayList<>(processes), contextSwitchingTime); DONE
+        // srtfScheduler(new ArrayList<>(processes), contextSwitchingTime);
+        // priorityScheduler(new ArrayList<>(processes), contextSwitchingTime);
 
         scanner.close();
     }
 
     // (1)
+
     public static void sjfScheduler(List<Process> processes, int contextSwitchingTime) {
         List<Process> sjfOrder = new ArrayList<>();
         List<Process> waitingQueue = new ArrayList<>();
         int currentTime = 0;
-
+        processes.sort(Comparator.comparingInt(p -> p.burstTime));
         while (!processes.isEmpty() || !waitingQueue.isEmpty()) {
-            for (Process p : processes) {
+            Iterator<Process> processIterator = processes.iterator();
+            while (processIterator.hasNext()) {
+                Process p = processIterator.next();
                 if (p.arrivalTime <= currentTime && !p.executed) {
                     waitingQueue.add(p);
+                    processIterator.remove();
                 }
             }
-
             if (!waitingQueue.isEmpty()) {
                 waitingQueue.sort(Comparator.comparingInt(p -> p.burstTime));
                 Process shortest = waitingQueue.remove(0);
                 shortest.startTime = currentTime;
                 shortest.finishTime = currentTime + shortest.burstTime;
-                shortest.turnaroundTime = shortest.finishTime - shortest.arrivalTime;
+                shortest.turnaroundTime = shortest.finishTime - shortest.arrivalTime + contextSwitchingTime;
                 shortest.waitingTime = shortest.turnaroundTime - shortest.burstTime;
                 currentTime = shortest.finishTime + contextSwitchingTime;
                 shortest.executed = true;
                 sjfOrder.add(shortest);
-            } else {
+            } else if (!processes.isEmpty()) {
                 currentTime++;
             }
         }
-
         calculateAverages(sjfOrder, "Shortest-Job First ");
     }
 
-    //(2)
     public static void srtfScheduler(List<Process> processes, int contextSwitchingTime) {
         List<Process> srtfOrder = new ArrayList<>();
         int currentTime = 0;
