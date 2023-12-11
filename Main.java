@@ -447,8 +447,7 @@ public class Main {
             if(!p.calculated){
                 counter++;
                 p.calculated = true;
-                System.out.println("\n"+p.name +" ("+p.color+")" +" Turnaround Time: "+p.turnaroundTime);
-                System.out.println("\n"+p.name +" ("+p.color+")" +" Waiting Time: "+p.waitingTime);
+                System.out.println("\n"+p.name +" ("+p.color+")" +" Turnaround Time: "+p.turnaroundTime  +"  and  Waiting Time: "+p.waitingTime);
                 totalWaitingTime += p.waitingTime;
                 totalTurnaroundTime += p.turnaroundTime;
             }
