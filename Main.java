@@ -18,7 +18,7 @@ class Process {
     boolean executed;
     boolean calculated;
 
-    public Process(String name, String color, int arrivalTime, int burstTime, int priority, int timeQuantum) {
+    public Process(String name, String color, int arrivalTime, int burstTime, int priority, int timeQuantum, int AGfactor) {
         this.name = name;
         this.color = color;
         this.arrivalTime = arrivalTime;
@@ -34,6 +34,7 @@ class Process {
         this.DonePreemptive = false;
         this.executed = false;
         this.calculated = false;
+        this.AGfactor = AGfactor;
     }
 }
 
@@ -69,7 +70,10 @@ public class Main {
             System.out.print("Priority: ");
             int priority = scanner.nextInt();
 
-            processes.add(new Process(name, color, arrivalTime, burstTime, priority,timeQuantum));
+            // System.out.print("AGfactor: ");
+            // int AGfactor = scanner.nextInt();
+
+            processes.add(new Process(name, color, arrivalTime, burstTime, priority,timeQuantum,0));
         }
         System.out.print("Please Choose the Algorithm: \n1- Shortest-Job First\n2- Shortest Remaining Time First\n3- Non-preemptive Priority Scheduling\n4- AGScheduler\n----> ");
         int choice = scanner.nextInt();
@@ -257,7 +261,8 @@ public class Main {
         int AGfactor = Integer.MAX_VALUE;
         int idx = -1;
         Process currentProcess = null;
-        List<Process> AgScheduler = new ArrayList<>(); 
+        List<Process> AgScheduler = new ArrayList<>();
+        List<Process> ReadyQueue = new ArrayList<>();
         List<String> executionOrder = new ArrayList<>();
         processes.sort(Comparator.comparingInt(p -> p.AGfactor));
         boolean flag = false;
@@ -278,43 +283,68 @@ public class Main {
                 }
             }
         while (true) {
+            System.out.print("Quantum ( ");
+            for (int i = 0; i < processes.size(); i++) {
+                Process p = processes.get(i);
+                System.out.print(p.name+" ("+p.timeQuantum +")"+ ", ");
+            }
+            System.out.println(")");
             for (int i = 0; i < processes.size(); i++) {
                 Process p = processes.get(i);
                 if (p.arrivalTime <= currentTime && !p.executed && p.AGfactor < AGfactor) {
-                    if (currentProcess != null && currentProcess != p) {
-                        executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
-                    }
-                    if(currentProcess != null && currentProcess.changeable_timeQuantum == 0 && !currentProcess.executed)
+                    if(currentProcess != null && !currentProcess.DonePreemptive)
                     {
-                        int mean = calcMean(processes,currentTime);
-                        currentProcess.timeQuantum += mean;
-                        currentProcess.changeable_timeQuantum = currentProcess.timeQuantum;
-                        currentProcess.DonePreemptive = false;
+                        break;
                     }
-                    else if(currentProcess != null && currentProcess.changeable_timeQuantum != 0 && !currentProcess.executed)
+                    if(currentProcess != null && currentProcess.executed && !ReadyQueue.isEmpty())
                     {
-                        currentProcess.timeQuantum += currentProcess.changeable_timeQuantum;
-                        currentProcess.changeable_timeQuantum = currentProcess.timeQuantum;
-                        currentProcess.DonePreemptive = false;
+                        break;
                     }
+                    
                     flag = true;
                     idx = i;
                     AGfactor = p.AGfactor;
-                    currentProcess = p;
-                    executionOrder.add("Process " + p.name + " started at time " + currentTime);
+                    
                 }
             }
             if(flag){
+                if (currentProcess != null && currentProcess != processes.get(idx) && !currentProcess.executed) {
+                    executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
+                    ReadyQueue.add(currentProcess);
+                }
+                executionOrder.add("Process " + processes.get(idx).name + " started at time " + currentTime);
+                if(currentProcess != null && currentProcess.changeable_timeQuantum == 0 && !currentProcess.executed)
+                {
+                    int mean = calcMean(processes,currentTime);
+                    currentProcess.timeQuantum += mean;
+                    currentProcess.changeable_timeQuantum = currentProcess.timeQuantum;
+                    currentProcess.DonePreemptive = false;
+                    //System.out.println("Process " + currentProcess.name + " its Quantum Time " + currentProcess.timeQuantum);
+                }
+                else if(currentProcess != null && currentProcess.changeable_timeQuantum != 0 &&currentProcess.changeable_timeQuantum != currentProcess.timeQuantum&& !currentProcess.executed)
+                {
+                    currentProcess.timeQuantum += currentProcess.changeable_timeQuantum;
+                    currentProcess.changeable_timeQuantum = currentProcess.timeQuantum;
+                    currentProcess.DonePreemptive = false;
+                    //System.out.println("Process " + currentProcess.name + " its Quantum Time " + currentProcess.timeQuantum);
+                }
                 Process pro = processes.get(idx);
+                currentProcess = pro;
                 AgScheduler.add(pro);
                 if (pro.startTime == -1) {
                     pro.startTime = currentTime;
                 }
                 flag = false;
             }
-            else if(currentProcess != null &&!flag && currentProcess.changeable_timeQuantum == 0 && !currentProcess.executed)
+            else if(currentProcess != null &&!flag && currentProcess.changeable_timeQuantum == 0 )
             {
-                boolean flag2 = false;
+                if(!currentProcess.executed)
+                {
+                    int mean = calcMean(processes,currentTime);
+                    currentProcess.timeQuantum += mean;
+                    currentProcess.changeable_timeQuantum = currentProcess.timeQuantum;
+                }
+                
                 boolean checkArrivals = false;
                 for (int i = 0; i < processes.size(); i++) {
                     Process p = processes.get(i);
@@ -327,46 +357,34 @@ public class Main {
 
                 if(checkArrivals)
                 {
-                    AGfactor = Integer.MAX_VALUE;
-                    for (int i = 0; i < processes.size(); i++) {
-                        Process p = processes.get(i);
-                        if(p != currentProcess && p.AGfactor < AGfactor)
-                        {
-                            if (currentProcess != null && currentProcess != p) {
-                                executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
-                            }
-                            flag2 = true;
-                            idx = i;
-                            AGfactor = p.AGfactor;
-                            currentProcess = p;
-                            executionOrder.add("Process " + p.name + " started at time " + currentTime);
+                    
+                    Process p = ReadyQueue.get(0);//3132
+                    while(p.executed)
+                    {
+                        ReadyQueue.remove(0);
+                        p = ReadyQueue.get(0);
+                    }
+                    ReadyQueue.remove(0);
+                    if(p != currentProcess)
+                    {
+                        if (currentProcess != null && currentProcess != p && !currentProcess.executed) {
+                            executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
+                            ReadyQueue.add(currentProcess);
+                            currentProcess.DonePreemptive = false;
+                        }
+                        currentProcess = p;
+                        AGfactor = p.AGfactor;
+                        executionOrder.add("Process " + p.name + " started at time " + currentTime);
+                        AgScheduler.add(p);
+                        if (p.startTime == -1) {
+                            p.startTime = currentTime;
                         }
                     }
                 }
-                else
-                {
-                    if(currentProcess.changeable_timeQuantum == 0 && !currentProcess.executed)
-                    {
-                        int mean = calcMean(processes,currentTime);
-                        currentProcess.timeQuantum += mean;
-                        currentProcess.changeable_timeQuantum = currentProcess.timeQuantum;
-                        currentProcess.DonePreemptive = false;
-                    }
-                }
                 
-                if(flag2)
-                {
-                    Process pro = processes.get(idx);
-                    AgScheduler.add(pro);
-                    if (pro.startTime == -1) {
-                        pro.startTime = currentTime;
-                    }
-                    flag2 = false;
-                }
-
             }
 
-            if (currentProcess == null) {
+            if (currentProcess.executed) {
                 boolean allExecuted = true;
                 for (Process p : processes) {
                     if (!p.executed) {
@@ -379,13 +397,24 @@ public class Main {
                     break;
                 }
             } else {
-                int halfQuantum = (int) Math.ceil(currentProcess.timeQuantum / 2);
+                int halfQuantum = (int) Math.ceil((double) currentProcess.timeQuantum / 2);
                 if(!currentProcess.DonePreemptive)
                 {
-                    currentProcess.burstTime-=halfQuantum;
-                    currentTime+=halfQuantum;
-                    currentProcess.changeable_timeQuantum-=halfQuantum;
+                    //currentProcess.timeQuantum+=halfQuantum;
+                    int counter = 0;
+                    while(currentProcess.burstTime != 0)
+                    {
+                        currentProcess.burstTime--;
+                        currentTime++;
+                        currentProcess.changeable_timeQuantum--;
+                        counter++;
+                        if(counter == halfQuantum)
+                        {
+                            break;
+                        }
+                    }
                     currentProcess.DonePreemptive = true;
+                    //System.out.println("Process " + currentProcess.name + " its Quantum Time " + currentProcess.timeQuantum);
                 }
                 else
                 {
@@ -395,13 +424,14 @@ public class Main {
                 }
                 if (currentProcess.burstTime <= 0) {
                     currentProcess.changeable_timeQuantum = 0;
+                    currentProcess.timeQuantum = 0;
                     currentProcess.burstTime = 0;
                     currentProcess.executed = true;
                     currentProcess.finishTime = currentTime;
                     currentProcess.turnaroundTime = currentProcess.finishTime - currentProcess.arrivalTime;
                     currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.original_burstTime;
                     executionOrder.add("Process " + currentProcess.name + " ended at time " + currentTime);
-                    currentProcess = null;
+                    //currentProcess = null;
                     AGfactor = Integer.MAX_VALUE;
                 }
             }
@@ -432,7 +462,7 @@ public class Main {
                 counter++;
             }
         }
-        mean = (int) Math.ceil(0.1*(mean/counter)) ;
+        mean = (int) Math.ceil(0.1*((double) mean/counter)) ;
         return mean;
     }
 
