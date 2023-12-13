@@ -12,13 +12,14 @@ class Process {
     int startTime;
     int finishTime;
     int waitingTime;
+    int currentWaitingTime;
     int turnaroundTime;
     int AGfactor;
     boolean DonePreemptive;
     boolean executed;
     boolean calculated;
 
-    public Process(String name, String color, int arrivalTime, int burstTime, int priority, int timeQuantum, int AGfactor) {
+    public Process(String name, String color, int arrivalTime, int burstTime, int priority, int timeQuantum, int AGfactor,int currentWaitingTime) {
         this.name = name;
         this.color = color;
         this.arrivalTime = arrivalTime;
@@ -32,6 +33,7 @@ class Process {
         this.waitingTime = 0;
         this.turnaroundTime = 0;
         this.DonePreemptive = false;
+        this.currentWaitingTime = currentWaitingTime;
         this.executed = false;
         this.calculated = false;
         this.AGfactor = AGfactor;
@@ -73,7 +75,7 @@ public class Main {
             // System.out.print("AGfactor: ");
             // int AGfactor = scanner.nextInt();
 
-            processes.add(new Process(name, color, arrivalTime, burstTime, priority,timeQuantum,0));
+            processes.add(new Process(name, color, arrivalTime, burstTime, priority,timeQuantum,0,5));
         }
         System.out.print("Please Choose the Algorithm: \n1- Shortest-Job First\n2- Shortest Remaining Time First\n3- Non-preemptive Priority Scheduling\n4- AGScheduler\n----> ");
         int choice = scanner.nextInt();
@@ -157,13 +159,14 @@ public class Main {
         while (true) {
             for (int i = 0; i < processes.size(); i++) {
                 Process p = processes.get(i);
-                if (p.arrivalTime <= currentTime && !p.executed && p.burstTime < remainingTime) {
+                if ((p.arrivalTime <= currentTime && !p.executed && p.burstTime < remainingTime)|| (p.currentWaitingTime == 0) ) {
                      if (currentProcess != null && currentProcess != p) {
-                         executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
+                        executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
                      }
                     flag = true;
                     idx = i;
                     remainingTime = p.burstTime;
+                    p.currentWaitingTime = 5;
                     currentProcess = p;
                     executionOrder.add("Process " + p.name + " started at time " + currentTime);
                 }
@@ -194,12 +197,21 @@ public class Main {
                 currentProcess.burstTime--;
                 remainingTime--;
                 currentTime++;
+                for (int i = 0; i < processes.size(); i++) 
+                {
+                    Process p = processes.get(i);
+                    if(!p.executed && p!=currentProcess &&p.arrivalTime <= currentTime)
+                    {
+                        p.currentWaitingTime--;
+                    }
+                }
                 if (currentProcess.burstTime == 0) {
                     currentProcess.executed = true;
                     currentProcess.finishTime = currentTime;
                     currentProcess.turnaroundTime = currentProcess.finishTime - currentProcess.arrivalTime;
                     currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.original_burstTime;
-                       executionOrder.add("Process " + currentProcess.name + " ended at time " + currentTime);
+                    executionOrder.add("Process " + currentProcess.name + " ended at time " + currentTime);
+                    currentProcess.currentWaitingTime = 5;
                     currentProcess = null;
                     remainingTime = Integer.MAX_VALUE;
                 }
@@ -217,40 +229,80 @@ public class Main {
 
     // Non-preemptive Priority Scheduling
     public static void priorityScheduler(List<Process> processes, int contextSwitchingTime) {
-        List<Process> priorityOrder = new ArrayList<>();
-        List<Process> waitingQueue = new ArrayList<>();
         int currentTime = 0;
+        int priority = Integer.MAX_VALUE;
+        int idx = -1;
+        Process currentProcess = null;
+        List<Process> priorityOrder = new ArrayList<>(); 
+        List<String> executionOrder = new ArrayList<>();
         processes.sort(Comparator.comparingInt(p -> p.priority));
-        while (!processes.isEmpty() || !waitingQueue.isEmpty()) {
-            Iterator<Process> processIterator = processes.iterator();
-            while (processIterator.hasNext()) {
-                Process p = processIterator.next();
-                if (p.arrivalTime <= currentTime && !p.executed) {
-                    waitingQueue.add(p);
-                    processIterator.remove();
+        boolean flag = false;
+        while (true) {
+            for (int i = 0; i < processes.size(); i++) {
+                Process p = processes.get(i);
+                if ((p.arrivalTime <= currentTime && !p.executed && p.priority < priority)|| (p.currentWaitingTime == 0) ) {
+                     if (currentProcess != null && currentProcess != p) {
+                         executionOrder.add("Process " + currentProcess.name + " interrupted at time " + currentTime);
+                     }
+                    flag = true;
+                    idx = i;
+                    priority = p.priority;
+                    currentProcess = p;
+                    executionOrder.add("Process " + p.name + " started at time " + currentTime);
                 }
             }
-            if (!waitingQueue.isEmpty()) {
-                waitingQueue.sort(Comparator.comparingInt(p -> p.priority));
-                Process shortest = waitingQueue.remove(0);
-                shortest.startTime = currentTime;
-                shortest.finishTime = currentTime + shortest.burstTime;
-                shortest.turnaroundTime = shortest.finishTime - shortest.arrivalTime;
-                shortest.waitingTime = shortest.turnaroundTime - shortest.burstTime;
-                currentTime = shortest.finishTime;
-                shortest.executed = true;
-                priorityOrder.add(shortest);
-            } else if (!processes.isEmpty()) {
+            if(flag){
+                Process pro = processes.get(idx);
+                pro.currentWaitingTime = 5;
+                priorityOrder.add(pro);
+                if (pro.startTime == -1) {
+                    pro.startTime = currentTime;
+                }
+                flag = false;
+            }
+            
+
+            if (currentProcess == null) {
+                boolean allExecuted = true;
+                for (Process p : processes) {
+                    if (!p.executed) {
+                        currentTime++;
+                        allExecuted = false;
+                        break;
+                    }
+                }
+                if (allExecuted) {
+                    break;
+                }
+            } else {
+                currentProcess.burstTime--;
                 currentTime++;
+                for (int i = 0; i < processes.size(); i++) 
+                {
+                    Process p = processes.get(i);
+                    if(!p.executed && p!=currentProcess &&p.arrivalTime <= currentTime)
+                    {
+                        p.currentWaitingTime--;
+                    }
+                }
+                if (currentProcess.burstTime == 0) {
+                    currentProcess.executed = true;
+                    currentProcess.finishTime = currentTime;
+                    currentProcess.turnaroundTime = currentProcess.finishTime - currentProcess.arrivalTime;
+                    currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.original_burstTime;
+                    executionOrder.add("Process " + currentProcess.name + " ended at time " + currentTime);
+                    currentProcess.currentWaitingTime = 5;
+                    currentProcess = null;
+                    priority = Integer.MAX_VALUE;
+                }
             }
         }
 
-
-        System.out.println("\n" + "Non-preemptive Priority Scheduling" + " Execution Order:");
-        for (Process p : priorityOrder) {
-            System.out.println("Process " + p.name + " (" + p.color + ")" + ":\t" + p.startTime + " ---- " + p.finishTime );
+        System.out.println("Shortest Remaining Time First Execution order:");
+        for (String event : executionOrder) {
+            System.out.println(event);
         }
-
+    
         calculateAverages(priorityOrder);
     }
 
