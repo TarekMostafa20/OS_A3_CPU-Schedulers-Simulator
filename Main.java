@@ -407,7 +407,7 @@ public class Main {
                     }
                 }
 
-                if(checkArrivals)
+                if(checkArrivals && !ReadyQueue.isEmpty())
                 {
                     
                     Process p = ReadyQueue.get(0);//3132
@@ -432,6 +432,10 @@ public class Main {
                             p.startTime = currentTime;
                         }
                     }
+                }
+                else
+                {
+                    currentTime++;
                 }
                 
             }
